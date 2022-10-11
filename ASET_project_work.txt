@@ -1,0 +1,6 @@
+Butnaru Alexandra-Ina -> README.md + Intro
+Coteanu Maria-Gabriela -> .trello + Bernstein Implementation
+Isac Iulian-George -> research + bibliography + Overview
+Radu Rares-Aurelian -> .git + Goppa Codes
+Stefiuc Marina-Alexandra -> .txt +  McEliece
+Tiflea Denisa-Ionela -> docs + Code-based Cryptography
