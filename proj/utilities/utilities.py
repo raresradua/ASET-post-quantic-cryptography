@@ -3,15 +3,28 @@ import time
 import tracemalloc
 import os
 import psutil
+from functools import wraps
+
+from fastapi import Request, HTTPException
+
+
+def logged(function):
+	@wraps(function)
+	async def wrapper(request: Request, *args, **kwargs):
+		payload = await request.json()
+		print(payload)
+		if not payload.get('token'):
+			raise HTTPException(400)
+		return await function(request, *args, **kwargs)
+	return wrapper
 
 
 def time_measurement_aspect(function):
-	def wrapper(*args,**kwargs):
-		start_time = round(time.time())
+	def wrapper(*args, **kwargs):
+		start_time = time.time()
 		return_value = function(*args,**kwargs)
-		end_time = round(time.time())
-		function_name = function.__name__
-		print("Function \"",function_name, "\"(", *args, ") lasted", end_time - start_time, "s")
+		end_time = time.time()
+		print('Function {} {} lasted {} seconds'.format(function.__name__, [i for i in args[1:]] or [], end_time - start_time))
 		return return_value
 
 	return wrapper
@@ -44,7 +57,7 @@ def consumed_memory(func):
 		mem_before = process_memory()
 		result = func(*args, **kwargs)
 		mem_after = process_memory()
-		print("{}:consumed memory: {:,} bytes".format(
+		print("{}:consumed memory: {:,} bytes\n".format(
 			func.__name__,
 			mem_before, mem_after, mem_after - mem_before))
 
