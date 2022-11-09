@@ -12,7 +12,6 @@ def logged(function):
 	@wraps(function)
 	async def wrapper(request: Request, *args, **kwargs):
 		payload = await request.json()
-		print(payload)
 		if not payload.get('token'):
 			raise HTTPException(400)
 		return await function(request, *args, **kwargs)
