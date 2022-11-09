@@ -51,7 +51,7 @@ async def generate_keys(request: Request):
     user = mongo.get_collection().find_one({'token': payload.get('token')})
     # TODO: add crypto system, generate key for it, update user
     pub, prv = 'public_key', 'private_key'
-    mongo.get_collection().update_one({'token': payload.get('token')}, {"$set": {payload.get('cryptosystem'): {'pub': pub, 'prv': prv}}})
+    mongo.get_collection().update_one({'token': bytes(payload.get('token'), 'utf-8')}, {"$set": {payload.get('cryptosystem'): {'pub': pub, 'prv': prv}}})
     return {
         'public_key': pub,
         'private_key': prv,

@@ -1,7 +1,7 @@
 import pymongo
 import os
 
-MONGO_URI = os.environ['MONGODB_CONNSTRING'] or 'mongodb://user:user@localhost:27017'
+MONGO_URI = os.environ.get('MONGODB_CONNSTRING') or 'mongodb://user:user@localhost:27017'
 
 
 class Mongo:
