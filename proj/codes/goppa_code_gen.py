@@ -38,7 +38,7 @@ class GoppaCode:
         self.F = galois.GF(base_field ** m)
         self.g = galois.irreducible_poly(self.F.order, self.t, 'random')
         self.coefficients = self.g.coefficients(self.t + 1, 'asc')
-        print(self.get_parity_check_matrix())
+        self.H = self.get_parity_check_matrix()
         
     
     def get_parity_check_matrix(self): 
@@ -53,7 +53,6 @@ class GoppaCode:
         Y = Matrix(self.t, self.n, lambda i, j: (alpha_set[j] ** i) % self.val)
         Z = Matrix(self.n, self.n, lambda i, j: modinv(int(self.g(alpha_set[i])) % int(self.val),int(self.val)) if i==j else 0)
         H = X * Y * Z
-        print(H.T.nullspace() * H.T)
         return H 
 
 
