@@ -62,17 +62,19 @@ class BinarryGoppaCode(LinearCode):
 
 
     def get_generator_matrix(self):
-        H_bin=Matrix(self.H.shape[0], self.H.shape[1],
-                     lambda i, j: self.H[i, j] % 2)
-        G=[]
-        for i in range(len(H_bin.nullspace())):
-            vec=[]
-            for j in range(len(H_bin.nullspace()[i])):
-                vec.append(abs(H_bin.nullspace()[i][j]))
-            G.append(vec)
-
-        G=Matrix(G)
-        return G
+        if self.H != None:
+            H_bin = Matrix(self.H.shape[0], self.H.shape[1],
+                           lambda i, j: self.H[i, j] % 2)
+            G = []
+            for i in range(len(H_bin.nullspace())):
+                vec = []
+                for j in range(len(H_bin.nullspace()[i])):
+                    vec.append(abs(H_bin.nullspace()[i][j]))
+                G.append(vec)
+            G = Matrix(G)
+            return G
+        else:
+            return None
     
     def error_correction(self,codeword):
        return None 
