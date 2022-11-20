@@ -18,3 +18,9 @@ class LinearCode(ABC):
     @abstractmethod
     def get_generator_matrix(self):
         ...
+    
+    @abstractmethod
+    def error_correction(self,codeword):
+        ...
+    
+    
