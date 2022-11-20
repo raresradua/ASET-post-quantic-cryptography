@@ -23,7 +23,7 @@ def modinv(a, m):
     return x % m
 
 
-class BinarryGoppaCode(LinearCode):
+class BinaryGoppaCode(LinearCode):
 
     def __init__(self, m, t, n, k):
         if k >= n - m * t:
