@@ -1,6 +1,7 @@
 from linear_code import LinearCode
 import galois
 from sympy import Matrix
+from sympy.polys.galoistools import gf_gcdex,gf_strip
 import random as rand
 from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 
@@ -36,8 +37,10 @@ class BinaryGoppaCode(LinearCode):
             self.F = galois.GF(2 ** m)
             self.g = galois.irreducible_poly(self.F.order, self.t, 'random')
             self.coefficients = self.g.coefficients(self.t + 1, 'asc')
+            self.alpha_set = self.get_alpha_set()
             self.H = self.get_parity_check_matrix()
             self.G = self.get_generator_matrix()
+            self.get_syndrome_polynom([1, 1, 1, 1, 1, 1, 1])
             super().__init__(n, k, self)
         else:
             print("Invalid arguments ! ")
@@ -45,19 +48,24 @@ class BinaryGoppaCode(LinearCode):
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
-    def get_parity_check_matrix(self):
+    def get_alpha_set(self):
         alpha_set = []
         while len(alpha_set) < self.n:
             element = rand.randint(0, self.val)
             if int(self.g(element)) % int(self.val) != 0 and modinv(int(self.g(element)) % int(self.val),
                                                                     int(self.val)) is not None:
                 alpha_set.append(element)
+        return alpha_set
 
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def get_parity_check_matrix(self):
         x_matrix = Matrix(self.t, self.t, lambda i, j: int(
             self.coefficients[j - i]) if 0 <= i - j < self.t else 0)
-        y_matrix = Matrix(self.t, self.n, lambda i, j: (alpha_set[j] ** i) % self.val)
+        y_matrix = Matrix(self.t, self.n, lambda i, j: (self.alpha_set[j] ** i) % self.val)
         z_matrix = Matrix(self.n, self.n, lambda i, j: modinv(
-            int(self.g(alpha_set[i])) % int(self.val), int(self.val)) if i == j else 0)
+            int(self.g(self.alpha_set[i])) % int(self.val), int(self.val)) if i == j else 0)
         h_matrix = x_matrix * y_matrix * z_matrix
         h_matrix = Matrix(h_matrix.shape[0], h_matrix.shape[1], lambda i, j: h_matrix[i, j] % self.val)
         return h_matrix
@@ -78,6 +86,13 @@ class BinaryGoppaCode(LinearCode):
             return g_matrix
         else:
             return None
+
+    ### TO DO 
+    def get_syndrome_polynom(self, codeword):
+        s = galois.Poly([0], field=self.F)
+        for i in range(len(codeword)):
+            polynom = galois.Poly([1, self.val - self.alpha_set[i]], field=self.F)
+        return s
 
     @consumed_memory
     @resource_measurement_aspect
