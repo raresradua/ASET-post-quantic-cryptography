@@ -92,4 +92,4 @@ class BinaryGoppaCode(LinearCode):
         return None
 
 
-obj = BinarryGoppaCode(13, 13, 12, 10)
+obj = BinaryGoppaCode(13, 13, 12, 10)
