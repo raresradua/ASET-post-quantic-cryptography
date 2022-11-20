@@ -2,6 +2,7 @@ from linear_code import LinearCode
 import galois
 from sympy import Matrix
 import random as rand
+from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 
 
 def extended_gcd(aa, bb):
@@ -41,6 +42,9 @@ class BinarryGoppaCode(LinearCode):
         else:
             print("Invalid arguments ! ")
 
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
     def get_parity_check_matrix(self):
         alpha_set = []
         while len(alpha_set) < self.n:
@@ -58,6 +62,9 @@ class BinarryGoppaCode(LinearCode):
         h_matrix = Matrix(h_matrix.shape[0], h_matrix.shape[1], lambda i, j: h_matrix[i, j] % self.val)
         return h_matrix
 
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
     def get_generator_matrix(self):
         if self.H is not None:
             h_bin = Matrix(self.H.shape[0], self.H.shape[1], lambda i, j: self.H[i, j] % 2)
@@ -72,6 +79,9 @@ class BinarryGoppaCode(LinearCode):
         else:
             return None
 
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
     def error_correction(self, codeword):
         return None
 
