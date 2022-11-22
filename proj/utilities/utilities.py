@@ -11,8 +11,8 @@ from fastapi import Request, HTTPException
 def logged(function):
 	@wraps(function)
 	async def wrapper(request: Request, *args, **kwargs):
-		payload = await request.json()
-		if not payload.get('token'):
+		headers = request.headers.get('Authorization')
+		if not headers:
 			raise HTTPException(400)
 		return await function(request, *args, **kwargs)
 	return wrapper

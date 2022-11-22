@@ -4,3 +4,6 @@ requests
 pymongo
 uvicorn
 psutil
+pythonrv
+pyjwt
+passlib

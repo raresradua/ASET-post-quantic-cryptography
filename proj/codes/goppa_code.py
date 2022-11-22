@@ -3,7 +3,9 @@ import galois
 from sympy import Matrix
 import random as rand
 from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
+import logging
 
+logger = logging.getLogger()
 
 def extended_gcd(aa, bb):
     lastremainder, remainder = abs(aa), abs(bb)
@@ -26,7 +28,13 @@ def modinv(a, m):
 class BinaryGoppaCode(LinearCode):
 
     def __init__(self, m, t, n, k):
-        if k >= n - m * t:
+        logger.info('[INFO] Calling __init__ for GoppaCode')
+        try:
+            assert k >= n - m * t
+        except Exception:
+            logger.error('[ERROR] Invalid arguments.')
+        else:
+            logger.info('[INFO] Arguments are alright.')
             self.m = m
             self.t = t
             self.n = n
@@ -41,25 +49,30 @@ class BinaryGoppaCode(LinearCode):
             self.G = self.get_generator_matrix()
             self.syndrome_polynom = self.get_syndrome_polynom([1, 1, 1, 1, 1, 1, 1])
             super().__init__(n, k, self)
-        else:
-            print("Invalid arguments ! ")
+            logger.info('Arguments for Goppa Code: {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
+                self.m, self.t, self.n, self.base_field, self.val, self.k, self.F, self.g, self.coefficients,
+                self.alpha_set, self.H, self.H, self.G, self.syndrome_polynom
+            ))
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
     def get_alpha_set(self):
+        logger.info('[INFO] Calling get_alpha_set')
         alpha_set = []
         while len(alpha_set) < self.n:
             element = rand.randint(0, self.val)
             if int(self.g(element)) % int(self.val) != 0 and modinv(int(self.g(element)) % int(self.val),
                                                                     int(self.val)) is not None:
                 alpha_set.append(element)
+        logger.info('[INFO] Alpha set value: {}'.format(alpha_set))
         return alpha_set
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
     def get_parity_check_matrix(self):
+        logger.info('[INFO] Calling get_parity_check_matrix')
         x_matrix = Matrix(self.t, self.t, lambda i, j: int(
             self.coefficients[j - i]) if 0 <= i - j < self.t else 0)
         y_matrix = Matrix(self.t, self.n, lambda i, j: (self.alpha_set[j] ** i) % self.val)
@@ -67,13 +80,21 @@ class BinaryGoppaCode(LinearCode):
             int(self.g(self.alpha_set[i])) % int(self.val), int(self.val)) if i == j else 0)
         h_matrix = x_matrix * y_matrix * z_matrix
         h_matrix = Matrix(h_matrix.shape[0], h_matrix.shape[1], lambda i, j: h_matrix[i, j] % self.val)
+        logger.info('[INFO] Parity check matrix: {}'.format(h_matrix))
         return h_matrix
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
     def get_generator_matrix(self):
-        if self.H is not None:
+        logger.info('[INFO] Calling get_generator_matrix')
+        try:
+            assert self.H
+        except Exception:
+            logger.error('[ERROR] Parity check matrix not computed.')
+            return None
+        else:
+            logger.info('[INFO] Everything is alright.')
             h_bin = Matrix(self.H.shape[0], self.H.shape[1], lambda i, j: self.H[i, j] % 2)
             g_matrix = []
             for i in range(len(h_bin.nullspace())):
@@ -82,12 +103,12 @@ class BinaryGoppaCode(LinearCode):
                     vec.append(h_bin.nullspace()[i][j])
                 g_matrix.append(vec)
             g_matrix = Matrix(g_matrix)
+            logger.info('[INFO] Generator matrix value: {}'.format(g_matrix))
             return g_matrix
-        else:
-            return None
 
     # TO DO
     def get_syndrome_polynom(self, codeword):
+        logger.info('[INFO] Calling get_syndrome_polynom')
         s = galois.Poly([0], field=self.F)
         for i in range(len(codeword)):
             polynom = galois.Poly([1], field=self.F)
@@ -96,6 +117,7 @@ class BinaryGoppaCode(LinearCode):
                     polynom = polynom * galois.Poly([1, self.val - self.alpha_set[i]], field=self.F)
             s = s + polynom % self.g
         rest_polynom = s % self.g
+        logger.info('[INFO] Syndrom poly value: {}'.format(rest_polynom))
         return rest_polynom
 
     @consumed_memory
@@ -111,4 +133,5 @@ class BinaryGoppaCode(LinearCode):
         return None
 
 
-obj = BinaryGoppaCode(13, 13, 12, 10)
+if __name__ == '__main__':
+    obj = BinaryGoppaCode(13, 13, 12, 10)
