@@ -33,13 +33,13 @@ async def register(request: Request):
     collection = mongo.get_collection()
     user = collection.find_one({'username': username})
     if not user:
-        collection.insert_one({'username': username, 'password': sha256_crypt.encrypt(password), 'token': b64encode(bytes(username + 'DDD' + password, 'utf-8'))})
+        collection.insert_one({'username': username, 'password': sha256_crypt.encrypt(password)})
     else:
         return {
             'detail': 'user already exists'
         }
     return {
-        'token': b64encode(bytes(username + 'DDD' + password, 'utf-8'))
+        'detail': 'user successfully created'
     }
 
 
