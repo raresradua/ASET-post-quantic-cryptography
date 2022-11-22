@@ -1,7 +1,6 @@
 from linear_code import LinearCode
 import galois
 from sympy import Matrix
-from sympy.polys.galoistools import gf_gcdex,gf_strip
 import random as rand
 from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 
@@ -40,7 +39,7 @@ class BinaryGoppaCode(LinearCode):
             self.alpha_set = self.get_alpha_set()
             self.H = self.get_parity_check_matrix()
             self.G = self.get_generator_matrix()
-            self.get_syndrome_polynom([1, 1, 1, 1, 1, 1, 1])
+            self.syndrome_polynom = self.get_syndrome_polynom([1, 1, 1, 1, 1, 1, 1])
             super().__init__(n, k, self)
         else:
             print("Invalid arguments ! ")
@@ -87,12 +86,17 @@ class BinaryGoppaCode(LinearCode):
         else:
             return None
 
-    ### TO DO 
+    # TO DO
     def get_syndrome_polynom(self, codeword):
         s = galois.Poly([0], field=self.F)
         for i in range(len(codeword)):
-            polynom = galois.Poly([1, self.val - self.alpha_set[i]], field=self.F)
-        return s
+            polynom = galois.Poly([1], field=self.F)
+            for j in range(len(codeword)):
+                if i != j:
+                    polynom = polynom * galois.Poly([1, self.val - self.alpha_set[i]], field=self.F)
+            s = s + polynom % self.g
+        rest_polynom = s % self.g
+        return rest_polynom
 
     @consumed_memory
     @resource_measurement_aspect
