@@ -87,7 +87,7 @@ async def generate_keys(request: Request):
     }
 
 
-@app.post('/profile')
+@app.post('/profile', dependencies=[Depends(JWTBearer())])
 @logged
 async def profile(request: Request):
     headers = request.headers.get('Authorization')
