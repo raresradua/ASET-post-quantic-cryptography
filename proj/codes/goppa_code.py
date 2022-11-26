@@ -106,19 +106,25 @@ class BinaryGoppaCode(LinearCode):
             logger.info('[INFO] Generator matrix value: {}'.format(g_matrix))
             return g_matrix
 
-    # TO DO
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
     def get_syndrome_polynom(self, codeword):
         logger.info('[INFO] Calling get_syndrome_polynom')
-        s = galois.Poly([0], field=self.F)
-        for i in range(len(codeword)):
-            polynom = galois.Poly([1], field=self.F)
-            for j in range(len(codeword)):
-                if i != j:
-                    polynom = polynom * galois.Poly([1, self.val - self.alpha_set[i]], field=self.F)
-            s = s + polynom % self.g
-        rest_polynom = s % self.g
-        logger.info('[INFO] Syndrom poly value: {}'.format(rest_polynom))
-        return rest_polynom
+        s = np.zeros(shape=(1, len(self.alpha_set)), dtype=galois.Poly)
+        syndrome_poly = galois.Poly([0], field=self.F)
+        for i in range(len(self.alpha_set)):
+            poly = galois.Poly([0,1],field=self.F)
+            if i > 0:
+                poly = galois.Poly([1] + [0] * (i - 1), field=self.F)
+            else:
+                poly = galois.Poly([0], field=self.F)
+
+            syndrome_poly = syndrome_poly + (galois.Poly([codeword[i] * 1, codeword[i] * (-1) * self.alpha_set[i]],
+                                                         field=self.F) % self.g) * poly
+
+        logger.info('[INFO] Syndrome poly value: {}'.format(syndrome_poly))
+        return syndrome_poly
 
     @consumed_memory
     @resource_measurement_aspect
