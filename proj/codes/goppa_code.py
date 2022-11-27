@@ -1,11 +1,12 @@
 from linear_code import LinearCode
 import galois
-from sympy import Matrix
+from sympy import Matrix, symbols
 import random as rand
 from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 import logging
 
 logger = logging.getLogger()
+
 
 def extended_gcd(aa, bb):
     lastremainder, remainder = abs(aa), abs(bb)
@@ -47,12 +48,10 @@ class BinaryGoppaCode(LinearCode):
             self.alpha_set = self.get_alpha_set()
             self.H = self.get_parity_check_matrix()
             self.G = self.get_generator_matrix()
-            self.syndrome_polynom = self.get_syndrome_polynom([1, 1, 1, 1, 1, 1, 1])
+            self.syndrome_polynom = self.get_syndrome_polynom([1] * self.n)
+            self.error_correction([1] * self.n)
+
             super().__init__(n, k, self)
-            logger.info('Arguments for Goppa Code: {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
-                self.m, self.t, self.n, self.base_field, self.val, self.k, self.F, self.g, self.coefficients,
-                self.alpha_set, self.H, self.H, self.G, self.syndrome_polynom
-            ))
 
     @consumed_memory
     @resource_measurement_aspect
@@ -103,33 +102,42 @@ class BinaryGoppaCode(LinearCode):
                     vec.append(h_bin.nullspace()[i][j])
                 g_matrix.append(vec)
             g_matrix = Matrix(g_matrix)
+            print(g_matrix.shape)
             logger.info('[INFO] Generator matrix value: {}'.format(g_matrix))
             return g_matrix
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
+    def transform_polynom(self, polynom):
+        x = symbols('x')
+        poly = x * 0
+        for i in range(len(polynom.coeffs)):
+            poly = poly + x ** (len(polynom.coeffs) - 1 - i) * polynom.coeffs[i]
+        return poly
+
+    # TO DO
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
     def get_syndrome_polynom(self, codeword):
         logger.info('[INFO] Calling get_syndrome_polynom')
-        s = np.zeros(shape=(1, len(self.alpha_set)), dtype=galois.Poly)
-        syndrome_poly = galois.Poly([0], field=self.F)
-        for i in range(len(self.alpha_set)):
-            poly = galois.Poly([0,1],field=self.F)
-            if i > 0:
-                poly = galois.Poly([1] + [0] * (i - 1), field=self.F)
-            else:
-                poly = galois.Poly([0], field=self.F)
-
-            syndrome_poly = syndrome_poly + (galois.Poly([codeword[i] * 1, codeword[i] * (-1) * self.alpha_set[i]],
-                                                         field=self.F) % self.g) * poly
-
-        logger.info('[INFO] Syndrome poly value: {}'.format(syndrome_poly))
-        return syndrome_poly
+        x = symbols('x')
+        g = self.transform_polynom(self.g)
+        syndrome_polynom = x * 0
+        for i in range(len(codeword)):
+            syndrome_polynom = syndrome_polynom + codeword[i] * (x - self.alpha_set[i]).invert(g)
+        return syndrome_polynom
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
     def error_correction(self, codeword):
+        x = symbols('x')
+        syndrome_polynom = self.get_syndrome_polynom(codeword)
+        h_polynom = syndrome_polynom.invert(self.transform_polynom(self.g))
+        h_polynom = h_polynom + x * 1
+        print(h_polynom.co)
         return None
 
     @consumed_memory
