@@ -1,6 +1,6 @@
 from linear_code import LinearCode
 import galois
-from sympy import Matrix, symbols
+from sympy import Matrix, symbols, sqf_list, div
 import random as rand
 from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 import logging
@@ -102,7 +102,6 @@ class BinaryGoppaCode(LinearCode):
                     vec.append(h_bin.nullspace()[i][j])
                 g_matrix.append(vec)
             g_matrix = Matrix(g_matrix)
-            print(g_matrix.shape)
             logger.info('[INFO] Generator matrix value: {}'.format(g_matrix))
             return g_matrix
 
@@ -137,7 +136,7 @@ class BinaryGoppaCode(LinearCode):
         syndrome_polynom = self.get_syndrome_polynom(codeword)
         g = self.transform_polynom(self.g)
         h_polynom = syndrome_polynom.invert(self.transform_polynom(self.g))
-        #tmp_polynom = (h_polynom + x * 1) % g
+        quotient_polynom, tmp_polynom = div(h_polynom + x * 1, g)
         return None
 
     @consumed_memory
