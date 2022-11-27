@@ -135,9 +135,9 @@ class BinaryGoppaCode(LinearCode):
     def error_correction(self, codeword):
         x = symbols('x')
         syndrome_polynom = self.get_syndrome_polynom(codeword)
+        g = self.transform_polynom(self.g)
         h_polynom = syndrome_polynom.invert(self.transform_polynom(self.g))
-        h_polynom = h_polynom + x * 1
-        print(h_polynom.co)
+        #tmp_polynom = (h_polynom + x * 1) % g
         return None
 
     @consumed_memory
