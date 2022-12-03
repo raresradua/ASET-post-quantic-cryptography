@@ -17,6 +17,17 @@ def get_random_msg(size):
     return [rand.randint(0, 1) for index in range(size)]
 
 
+def get_random_error(size, number_errors):
+    count_errors = 0
+    vec = [0] * size
+    while count_errors < number_errors:
+        index_error = rand.randint(0, size - 1)
+        if vec[index_error] == 0:
+            vec[index_error] = 1
+            count_errors += 1
+    return vec
+
+
 def random_inv_matrix(size):
     while 1:
         candidate = np.random.randint(2, size=(size, size))
@@ -140,7 +151,7 @@ class BinaryGoppaCode(LinearCode):
         s, h, t = Poly(A_polynom).gcdex(Poly(B_polynom))
         A = (s * A_polynom).as_expr()
         B = (h - t * B_polynom).as_expr()
-        return A + x*B
+        return A ** 2 + x * (B ** 2)
 
     @consumed_memory
     @resource_measurement_aspect
@@ -177,8 +188,12 @@ class BinaryGoppaCode(LinearCode):
         quotient, T_polynom = divmod(sqf_part(H_polynom + x), g_x)
         T_polynom = T_polynom.__getnewargs__()[0]
         error_polynom = self.solve_equation(T_polynom, g_x)
-        print(error_polynom)
-        return None
+        error_polynom = Poly(error_polynom.__getnewargs__()[0])
+        errors = []
+        for i in range(len(codeword)):
+            if error_polynom.eval(codeword[i]) % 2 != 0:
+                errors.append(i)
+        return errors
 
     @consumed_memory
     @resource_measurement_aspect
@@ -197,3 +212,10 @@ if __name__ == '__main__':
     P = random_perm_matrix(n)
     G_ = S @ code.get_generator_matrix() @ P
     m = get_random_msg(k)
+    e = get_random_error(n, t)
+    ciphertext = np.array(m) @ np.array(G_) + e
+    argument = ciphertext @ np.linalg.inv(P)
+    argument = [c % 2 for c in argument]
+    errors_detected = code.error_correction(argument)
+    print(e)
+    print(errors_detected)
