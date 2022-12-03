@@ -1,6 +1,6 @@
 from linear_code import LinearCode
 import galois
-from sympy import Matrix, symbols, sqf_part
+from sympy import Matrix, symbols, sqf_part, Poly
 import random as rand
 from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 import logging
@@ -135,6 +135,16 @@ class BinaryGoppaCode(LinearCode):
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
+    def solve_equation(self, A_polynom, B_polynom):
+        x = symbols('x')
+        s, h, t = Poly(A_polynom).gcdex(Poly(B_polynom))
+        A = (s * A_polynom).as_expr()
+        B = (h - t * B_polynom).as_expr()
+        return A + x*B
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
     def transform_polynom(self, polynom):
         x = symbols('x')
         poly = x * 0
@@ -166,6 +176,8 @@ class BinaryGoppaCode(LinearCode):
         H_polynom = S_polynom.invert(g_x)
         quotient, T_polynom = divmod(sqf_part(H_polynom + x), g_x)
         T_polynom = T_polynom.__getnewargs__()[0]
+        error_polynom = self.solve_equation(T_polynom, g_x)
+        print(error_polynom)
         return None
 
     @consumed_memory
@@ -177,7 +189,7 @@ class BinaryGoppaCode(LinearCode):
 
 if __name__ == '__main__':
     m = 13
-    t = 13
+    t = 5
     n = 12
     k = 10
     code = BinaryGoppaCode(m, t, n, k)
