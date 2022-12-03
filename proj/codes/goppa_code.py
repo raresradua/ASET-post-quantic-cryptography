@@ -191,7 +191,7 @@ class BinaryGoppaCode(LinearCode):
         error_polynom = Poly(error_polynom.__getnewargs__()[0])
         errors = []
         for i in range(len(codeword)):
-            if error_polynom.eval(codeword[i]) % 2 != 0:
+            if error_polynom.eval(codeword[i]) != 0:
                 errors.append(i)
         return errors
 
@@ -211,11 +211,10 @@ if __name__ == '__main__':
     S = random_inv_matrix(k)
     P = random_perm_matrix(n)
     G_ = S @ code.get_generator_matrix() @ P
-    m = get_random_msg(k)
+    message = get_random_msg(k)
     e = get_random_error(n, t)
-    ciphertext = np.array(m) @ np.array(G_) + e
-    argument = ciphertext @ np.linalg.inv(P)
-    argument = [c % 2 for c in argument]
+    ciphertext = np.array(message) @ np.array(G_) + e
+    argument = (ciphertext @ np.linalg.inv(P)) @ np.array(code.get_parity_check_matrix()).T
     errors_detected = code.error_correction(argument)
     print(e)
     print(errors_detected)
