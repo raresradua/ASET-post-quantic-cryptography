@@ -1,12 +1,15 @@
 from linear_code import LinearCode
 import galois
-from sympy import Matrix, symbols, sqf_part, Poly
+from sympy import Matrix, sqf_part, symbols, Poly
 import random as rand
 from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 import logging
+import logging.handlers
 import numpy as np
 
 logger = logging.getLogger()
+logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.INFO)
 
 
 def random_perm_matrix(size):

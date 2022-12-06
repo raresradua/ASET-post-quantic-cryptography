@@ -7,3 +7,5 @@ psutil
 pythonrv
 pyjwt
 passlib
+sympy
+galois
