@@ -1,15 +1,13 @@
 from linear_code import LinearCode
 import galois
-from sympy import Matrix, sqf_part, symbols, Poly
+from sympy import Matrix, symbols, Poly
 import random as rand
 from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 import logging
-import logging.handlers
 import numpy as np
+from cryptography.fernet import Fernet
 
 logger = logging.getLogger()
-logger.addHandler(logging.StreamHandler())
-logger.setLevel(logging.INFO)
 
 
 def random_perm_matrix(size):
@@ -64,6 +62,20 @@ def mod_inv(a, mod):
     return x % mod
 
 
+def get_string_from_vec(vec):
+    s = ""
+    for element in vec:
+        s += str(element)
+    return s
+
+
+def get_vec_from_str(str):
+    vec = []
+    for ch in str:
+        vec.append(int(ch))
+    return vec
+
+
 class BinaryGoppaCode(LinearCode):
 
     def __init__(self, m_val, t_val, n_val, k_val):
@@ -83,21 +95,33 @@ class BinaryGoppaCode(LinearCode):
             self.F = galois.GF(2 ** m_val)
             self.g = galois.irreducible_poly(self.F.order, self.t, 'random')
             self.coefficients = self.g.coefficients(self.t + 1, 'asc')
-            self.alpha_set = self.get_alpha_set()
-            self.H = self.get_parity_check_matrix()
-            self.G = self.get_generator_matrix()
-            self.syndrome_polynom = self.get_syndrome_polynom([1, 1, 1, 1, 1, 1, 1])
-            self.e = self.error_correction([1, 1, 1, 1, 1, 1, 1])
+            self.alpha_set = self.generate_alpha_set()
+            self.H = self.generate_parity_check_matrix()
+            self.G = self.generate_generator_matrix()
             super().__init__(n, k, self)
-            logger.info('Arguments for Goppa Code: {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
-                self.m, self.t, self.n, self.base_field, self.val, self.k, self.F, self.g, self.coefficients,
-                self.alpha_set, self.H, self.H, self.G, self.syndrome_polynom
-            ))
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
     def get_alpha_set(self):
+        return self.alpha_set
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def get_generator_matrix(self):
+        return self.G
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def get_parity_check_matrix(self):
+        return self.H
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def generate_alpha_set(self):
         logger.info('[INFO] Calling get_alpha_set')
         alpha_set = []
         while len(alpha_set) < self.n:
@@ -111,7 +135,7 @@ class BinaryGoppaCode(LinearCode):
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
-    def get_parity_check_matrix(self):
+    def generate_parity_check_matrix(self):
         logger.info('[INFO] Calling get_parity_check_matrix')
         x_matrix = Matrix(self.t, self.t, lambda i, j: int(
             self.coefficients[j - i]) if 0 <= i - j < self.t else 0)
@@ -126,7 +150,7 @@ class BinaryGoppaCode(LinearCode):
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
-    def get_generator_matrix(self):
+    def generate_generator_matrix(self):
         logger.info('[INFO] Calling get_generator_matrix')
         try:
             assert self.H
@@ -159,50 +183,19 @@ class BinaryGoppaCode(LinearCode):
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
-    def transform_polynom(self, polynom):
-        x = symbols('x')
-        poly = x * 0
-        for i in range(len(polynom.coeffs)):
-            poly = poly + x ** (len(polynom.coeffs) - 1 - i) * polynom.coeffs[i]
-        return poly
-
-    @consumed_memory
-    @resource_measurement_aspect
-    @time_measurement_aspect
-    def get_syndrome_polynom(self, codeword):
-        logger.info('[INFO] Calling get_syndrome_polynom')
-        x = symbols('x')
-        s = 0
-        g = self.transform_polynom(self.g)
-        for i in range(len(codeword)):
-            s = s + codeword[i] * (x - self.alpha_set[i]).invert(g)
-        return s
-
-    @consumed_memory
-    @resource_measurement_aspect
-    @time_measurement_aspect
-    def error_correction(self, codeword):
-        x = symbols('x')
-        g_x = self.transform_polynom(self.g)
-        S_polynom = self.get_syndrome_polynom(codeword)
-        if S_polynom == 0:
-            return codeword
-        H_polynom = S_polynom.invert(g_x)
-        quotient, T_polynom = divmod(sqf_part(H_polynom + x), g_x)
-        T_polynom = T_polynom.__getnewargs__()[0]
-        error_polynom = self.solve_equation(T_polynom, g_x)
-        error_polynom = Poly(error_polynom.__getnewargs__()[0])
-        errors = []
-        for i in range(len(codeword)):
-            if error_polynom.eval(codeword[i]) != 0:
-                errors.append(i)
-        return errors
-
-    @consumed_memory
-    @resource_measurement_aspect
-    @time_measurement_aspect
     def decode(self, codeword):
         return None
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def get_error_locating_polynomial(self, v_error):
+        x = symbols('x')
+        error_locating_poly = 1
+        for i in range(len(v_error)):
+            if v_error[i] == 1:
+                error_locating_poly = error_locating_poly * (x - self.alpha_set[i])
+        return Poly(error_locating_poly)
 
 
 if __name__ == '__main__':
@@ -217,7 +210,27 @@ if __name__ == '__main__':
     message = get_random_msg(k)
     e = get_random_error(n, t)
     ciphertext = np.array(message) @ np.array(G_) + e
-    argument = (ciphertext @ np.linalg.inv(P)) @ np.array(code.get_parity_check_matrix()).T
-    errors_detected = code.error_correction(argument)
-    print(e)
-    print(errors_detected)
+    error_as_str = get_string_from_vec(e)
+    print(f'message={message}')
+    print(f'S={S}')
+    print(f'P={P}')
+    print(f'G={code.get_generator_matrix()}')
+    print(f'G\'={G_}')
+    print(f'ciphertext={ciphertext}')
+    print(f'error={e}')
+
+    FernetKey = Fernet.generate_key()
+    FernetCryptoSystem = Fernet(FernetKey)
+    encrypted_error = FernetCryptoSystem.encrypt(error_as_str.encode())
+    print("encrypted_error=", str(encrypted_error))
+    print("decrypted_error=", FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
+    received_error = get_vec_from_str(FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
+    print(f'received_error={received_error}')
+
+    mG_ = ciphertext - received_error
+    print(f'mG_={mG_}')
+    G_ = np.float_(G_)
+    m = mG_ @ np.linalg.pinv(G_)
+    m = [round(x) for x in m ]
+    print(f'm\'={m}')
+    # print(f'm={(mG_ @ np.linalg.inv(P)) @ np.linalg.pinv(S @ G_)}')

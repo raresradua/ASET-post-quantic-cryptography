@@ -4,9 +4,21 @@ from abc import abstractmethod
 import galois
 import numpy as np
 import random as rand
-from sympy import Poly, Symbol, roots, solve, CRootOf
+from cryptography.fernet import Fernet
 
-GF = galois.GF(2 ** 4)
+
+def get_string_from_vec(vec):
+    s = ""
+    for element in vec:
+        s += str(element)
+    return s
+
+
+def get_vec_from_str(string_):
+    vec = []
+    for ch in string_:
+        vec.append(int(ch))
+    return vec
 
 
 def random_perm_matrix(n):
@@ -47,22 +59,6 @@ def get_random_error(size, capacity):
             e[poz] = 1
             i = i + 1
     return e
-
-
-def calculate_poly(message):
-    x = Symbol('x')
-    s = 0
-    for i in range(len(message)):
-        s = s + message[i] * (x ** i)
-    return Poly(s)
-
-
-def transform_polynom(polynom):
-    x = Symbol('x')
-    poly = x * 0
-    for i in range(len(polynom.coeffs)):
-        poly = poly + x ** (len(polynom.coeffs) - 1 - i) * polynom.coeffs[i]
-    return Poly(poly)
 
 
 class ReedSolomon(LinearCode):
@@ -109,34 +105,32 @@ if __name__ == '__main__':
     P = random_perm_matrix(n)
 
     H = np.array([np.array(el) for el in transform(code.H)])
-    G1 = S @ transform(code.G) @ P
+    G_ = S @ transform(code.G) @ P
     m = get_random_msg(k)
     e = get_random_error(n, code.t)
-    y = m @ G1 + e
-
-    quotients = []
-    y_ = y @ np.linalg.inv(P)
-    copy_y_ = y_
-
-    y_ = [int(el) for el in y_]
-
-    syndrom = y_ @ H.T
+    y = m @ G_ + e
 
     print(f'H={H}')
     print(f'S={S}')
     print(f'G={code.G}')
     print(f'P={P}')
-    print(f'G\'={G1}')
+    print(f'G\'={G_}')
     print(f'm={m}')
     print(f'y={y}')
     print(f'e={e}')
-    print(f'y_={y_}')
-    print(f'syndrome={syndrom}')
 
-    s = m @ G1
-    mG = y - e
-    j = mG @ np.linalg.pinv(G1)
-    j = [int(el) for el in j]
-    print(f'm\'={s}')
-    print(f'm\'={mG}')
-    print(f'm={j}')
+    error_as_str = get_string_from_vec(e)
+    FernetKey = Fernet.generate_key()
+    FernetCryptoSystem = Fernet(FernetKey)
+    encrypted_error = FernetCryptoSystem.encrypt(error_as_str.encode())
+    print("encrypted_error=", str(encrypted_error))
+    print("decrypted_error=", FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
+    received_error = get_vec_from_str(FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
+    print(f'received_error={received_error}')
+
+    mG_ = y - received_error
+    print(f'mG_={mG_}')
+    G_ = np.float_(G_)
+    m = mG_ @ np.linalg.pinv(G_)
+    m = [round(x) for x in m]
+    print(f'm\'={m}')
