@@ -5,6 +5,7 @@ import galois
 import numpy as np
 import random as rand
 from cryptography.fernet import Fernet
+import itertools
 
 
 def get_string_from_vec(vec):
@@ -119,6 +120,7 @@ if __name__ == '__main__':
     print(f'y={y}')
     print(f'e={e}')
 
+    t = get_string_from_vec(e).count('1')
     error_as_str = get_string_from_vec(e)
     FernetKey = Fernet.generate_key()
     FernetCryptoSystem = Fernet(FernetKey)
@@ -134,3 +136,21 @@ if __name__ == '__main__':
     m = mG_ @ np.linalg.pinv(G_)
     m = [round(x) for x in m]
     print(f'm\'={m}')
+    copy_msg = m
+
+    good_errors = []
+    possible_errors = [np.array(list(i)) for i in list(itertools.product([0, 1], repeat=len(received_error)))]
+    for possible_error in possible_errors:
+        number_ones = get_string_from_vec(possible_error).count('1')
+        if number_ones == t:
+            good_errors.append(possible_error)
+
+    for error in good_errors:
+        mG_ = y - error
+        G_ = np.float_(G_)
+        m = mG_ @ np.linalg.pinv(G_)
+        m = [round(x) for x in m]
+        if np.array_equal(m, copy_msg):
+            print(f'error={error}')
+            print(f'm={m}')
+            print("Cryptosystem broken ! Message recovered")

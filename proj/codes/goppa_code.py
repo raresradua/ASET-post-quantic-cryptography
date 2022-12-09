@@ -6,6 +6,7 @@ from proj.utilities.utilities import consumed_memory, resource_measurement_aspec
 import logging
 import numpy as np
 from cryptography.fernet import Fernet
+import itertools
 
 logger = logging.getLogger()
 
@@ -234,3 +235,21 @@ if __name__ == '__main__':
     m = [round(x) for x in m ]
     print(f'm\'={m}')
     # print(f'm={(mG_ @ np.linalg.inv(P)) @ np.linalg.pinv(S @ G_)}')
+    copy_msg = m
+
+    good_errors = []
+    possible_errors = [np.array(list(i)) for i in list(itertools.product([0, 1], repeat=len(received_error)))]
+    for possible_error in possible_errors:
+        number_ones = get_string_from_vec(possible_error).count('1')
+        if number_ones == t:
+            good_errors.append(possible_error)
+
+    for error in good_errors:
+        mG_ = ciphertext - error
+        G_ = np.float_(G_)
+        m = mG_ @ np.linalg.pinv(G_)
+        m = [round(x) for x in m]
+        if np.array_equal(m, copy_msg):
+            print(f'error={error}')
+            print(f'm={m}')
+            print("Cryptosystem broken ! Message recovered")
