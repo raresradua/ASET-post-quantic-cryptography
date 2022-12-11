@@ -1,24 +1,26 @@
-from linear_code import LinearCode
+from .linear_code import LinearCode
 import galois
-from sympy import Matrix, symbols, Poly
+from sympy import Matrix
 import random as rand
-from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
+from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect, fernet_key, get_string_from_vec, get_vec_from_str
 import logging
 import numpy as np
 from cryptography.fernet import Fernet
-import itertools
+
 
 logger = logging.getLogger()
 
 
-def random_perm_matrix(size):
-    return np.array([[1 if i == x else 0 for i in range(size)] for x in np.random.permutation(n)])
-
-
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def get_random_msg(size):
     return [rand.randint(0, 1) for index in range(size)]
 
 
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def get_random_error(size, number_errors):
     count_errors = 0
     vec = [0] * size
@@ -30,6 +32,9 @@ def get_random_error(size, number_errors):
     return vec
 
 
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def random_inv_matrix(size):
     while 1:
         candidate = np.random.randint(2, size=(size, size))
@@ -38,6 +43,9 @@ def random_inv_matrix(size):
             return candidate
 
 
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def pow_(a, b):
     r = a
     for i in range(b):
@@ -45,6 +53,9 @@ def pow_(a, b):
     return r
 
 
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def extended_gcd(aa, bb):
     last_remainder, remainder = abs(aa), abs(bb)
     x, last_x, y, last_y = 0, 1, 1, 0
@@ -55,7 +66,9 @@ def extended_gcd(aa, bb):
         y, last_y = last_y - quotient * y, y
     return last_remainder, last_x * (-1 if aa < 0 else 1), last_y * (-1 if bb < 0 else 1)
 
-
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def mod_inv(a, mod):
     g, x, y = extended_gcd(a, mod)
     if g != 1:
@@ -63,23 +76,11 @@ def mod_inv(a, mod):
     return x % mod
 
 
-def get_string_from_vec(vec):
-    s = ""
-    for element in vec:
-        s += str(element)
-    return s
-
-
-def get_vec_from_str(str):
-    vec = []
-    for ch in str:
-        vec.append(int(ch))
-    return vec
-
-
-class BinaryGoppaCode(LinearCode):
-
-    def __init__(self, m_val, t_val, n_val, k_val):
+class GoppaCode(LinearCode):
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def __init__(self, m_val=20, t_val=5, n_val=12, k_val=10):
         logger.info('[INFO] Calling __init__ for GoppaCode')
         try:
             assert k_val >= n_val - m_val * t_val
@@ -87,19 +88,95 @@ class BinaryGoppaCode(LinearCode):
             logger.error('[ERROR] Invalid arguments.')
         else:
             logger.info('[INFO] Arguments are alright.')
-            self.m = m_val
-            self.t = t_val
-            self.n = n_val
+            self.m = m_val  # 2 la m
+            self.t = t_val  # erori - nr de 1
+            self.n = n_val  # lungime
             self.base_field = 2
             self.val = 2 ** m_val
-            self.k = k_val
+            self.k = k_val  # k dim matrice simetrizabila
             self.F = galois.GF(2 ** m_val)
             self.g = galois.irreducible_poly(self.F.order, self.t, 'random')
             self.coefficients = self.g.coefficients(self.t + 1, 'asc')
             self.alpha_set = self.generate_alpha_set()
             self.H = self.generate_parity_check_matrix()
             self.G = self.generate_generator_matrix()
-            super().__init__(n, k, self)
+            self.fernet_key = fernet_key
+            self.fernet_cryptosys = Fernet(self.fernet_key)
+            super().__init__(n_val, k_val, self)
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def encrypt_message(self, msg, public_key):
+        msg = [[int(d) for d in bin(ord(i))[2:]] for i in msg]
+        for idx, i in enumerate(msg):
+            if len(i) < self.k:
+                msg[idx] = [0] * (self.k - len(i)) + i
+        err = get_random_error(self.n, public_key['t'])
+
+        encrypted = []
+        print(msg)
+        for i in msg:
+            encrypted.append(np.array(i) @ np.array(public_key['G_prime']) + err)
+
+        err_str = get_string_from_vec(err)
+        enc_err = self.fernet_cryptosys.encrypt(err_str.encode())
+        print(encrypted)
+        print(len(encrypted))
+        return ''.join([''.join([chr(c + 1000) for c in i]) for i in encrypted]), enc_err
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def generate_keys(self):
+        t = self.t  # face parte din cheia publica
+
+        S = random_inv_matrix(self.k)  # matricea inversa care e simterica, cheie privata
+        P = self.random_perm_matrix(self.n)  # matrice permutare, cheie privata
+
+        G_prime = np.array(S @ self.code.get_generator_matrix() @ P)  # face parte din cheia publica
+
+        for i in G_prime:
+            for j in i:
+                i[j] = int(i[j])
+
+        for i in S:
+            for j in i:
+                i[j] = int(i[j])
+
+        for i in P:
+            for j in i:
+                i[j] = int(i[j])
+
+        return {
+            'public_key': {
+                'G_prime': G_prime.tolist(),
+                't': t
+            },
+            'private_key': {
+                'S': S.tolist(),
+                'P': P.tolist()
+            }
+        }
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def decrypt_message(self, cipher, err, key):
+        dec_err = get_vec_from_str(self.fernet_cryptosys.decrypt(err).decode('utf-8'))
+        arr = []
+        start, end = 0, self.n
+        while end <= len(cipher):
+            arr.append(np.array([ord(c) - 1000 for c in cipher[start:end]]) - dec_err)
+            start = end
+            end += self.n
+
+        mG_prime = []
+        for i in arr:
+            mG_prime.append(i)
+
+        m_dec = [m_ @ np.linalg.pinv(np.float_(key['G_prime'])) for m_ in mG_prime]
+        return ''.join([chr(int(''.join(str(c) for c in i), 2)) for i in [[round(x) for x in m_cc] for m_cc in m_dec]])
 
     @consumed_memory
     @resource_measurement_aspect
@@ -118,6 +195,12 @@ class BinaryGoppaCode(LinearCode):
     @time_measurement_aspect
     def get_parity_check_matrix(self):
         return self.H
+
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def random_perm_matrix(self, size):
+        return np.array([[1 if i == x else 0 for i in range(size)] for x in np.random.permutation(self.n)])
 
     @consumed_memory
     @resource_measurement_aspect
@@ -165,91 +248,29 @@ class BinaryGoppaCode(LinearCode):
             for i in range(len(h_bin.nullspace())):
                 vec = []
                 for j in range(len(h_bin.nullspace()[i])):
-                    vec.append(h_bin.nullspace()[i][j])
+                    vec.append(int(h_bin.nullspace()[i][j]))
                 g_matrix.append(vec)
-            g_matrix = Matrix(g_matrix)
+
+            # g_matrix = Matrix(g_matrix)
             logger.info('[INFO] Generator matrix value: {}'.format(g_matrix))
             return g_matrix
 
-    @consumed_memory
-    @resource_measurement_aspect
-    @time_measurement_aspect
-    def solve_equation(self, A_polynom, B_polynom):
-        x = symbols('x')
-        s, h, t = Poly(A_polynom).gcdex(Poly(B_polynom))
-        A = (s * A_polynom).as_expr()
-        B = (h - t * B_polynom).as_expr()
-        return A ** 2 + x * (B ** 2)
-
-    @consumed_memory
-    @resource_measurement_aspect
-    @time_measurement_aspect
-    def decode(self, codeword):
-        return None
-
-    @consumed_memory
-    @resource_measurement_aspect
-    @time_measurement_aspect
-    def get_error_locating_polynomial(self, v_error):
-        x = symbols('x')
-        error_locating_poly = 1
-        for i in range(len(v_error)):
-            if v_error[i] == 1:
-                error_locating_poly = error_locating_poly * (x - self.alpha_set[i])
-        return Poly(error_locating_poly)
-
 
 if __name__ == '__main__':
-    m = 13
-    t = 5
-    n = 12
-    k = 10
-    code = BinaryGoppaCode(m, t, n, k)
-    S = random_inv_matrix(k)
-    P = random_perm_matrix(n)
-    G_ = S @ code.get_generator_matrix() @ P
-    message = get_random_msg(k)
-    e = get_random_error(n, t)
-    ciphertext = np.array(message) @ np.array(G_) + e
-    error_as_str = get_string_from_vec(e)
-    print(f'message={message}')
-    print(f'S={S}')
-    print(f'P={P}')
-    print(f'G={code.get_generator_matrix()}')
-    print(f'G\'={G_}')
-    print(f'ciphertext={ciphertext}')
-    print(f'error={e}')
+    g = GoppaCode()
+    msg_ = 'salut hei salut hei salut'
 
-    FernetKey = Fernet.generate_key()
-    FernetCryptoSystem = Fernet(FernetKey)
-    encrypted_error = FernetCryptoSystem.encrypt(error_as_str.encode())
-    print("encrypted_error=", str(encrypted_error))
-    print("decrypted_error=", FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
-    received_error = get_vec_from_str(FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
-    print(f'received_error={received_error}')
+    keys = g.generate_keys()
+    cryp, err = g.encrypt_message(msg_, keys['public_key'])
+    dec = g.decrypt_message(cryp, err, keys['public_key'])
+    print(dec)
 
-    mG_ = ciphertext - received_error
-    print(f'mG_={mG_}')
-    G_ = np.float_(G_)
-    m = mG_ @ np.linalg.pinv(G_)
-    m = [round(x) for x in m ]
-    print(f'm\'={m}')
-    # print(f'm={(mG_ @ np.linalg.inv(P)) @ np.linalg.pinv(S @ G_)}')
-    copy_msg = m
+    keys = g.generate_keys()
+    cryp, err = g.encrypt_message(msg_, keys['public_key'])
+    dec = g.decrypt_message(cryp, err, keys['public_key'])
+    print(dec)
 
-    good_errors = []
-    possible_errors = [np.array(list(i)) for i in list(itertools.product([0, 1], repeat=len(received_error)))]
-    for possible_error in possible_errors:
-        number_ones = get_string_from_vec(possible_error).count('1')
-        if number_ones == t:
-            good_errors.append(possible_error)
-
-    for error in good_errors:
-        mG_ = ciphertext - error
-        G_ = np.float_(G_)
-        m = mG_ @ np.linalg.pinv(G_)
-        m = [round(x) for x in m]
-        if np.array_equal(m, copy_msg):
-            print(f'error={error}')
-            print(f'm={m}')
-            print("Cryptosystem broken ! Message recovered")
+    keys = g.generate_keys()
+    cryp, err = g.encrypt_message(msg_, keys['public_key'])
+    dec = g.decrypt_message(cryp, err, keys['public_key'])
+    print(dec)

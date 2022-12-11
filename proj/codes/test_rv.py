@@ -1,4 +1,4 @@
-import rv_stuff
+import rv_goppa
 import goppa_code
 
 
