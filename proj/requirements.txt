@@ -8,3 +8,4 @@ pythonrv
 pyjwt
 passlib
 cryptography
+galois
