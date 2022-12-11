@@ -1,31 +1,21 @@
-from linear_code import LinearCode
-from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
-from abc import abstractmethod
+from .linear_code import LinearCode
+from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect, fernet_key, get_string_from_vec, get_vec_from_str
 import galois
 import numpy as np
 import random as rand
 from cryptography.fernet import Fernet
-import itertools
 
 
-def get_string_from_vec(vec):
-    s = ""
-    for element in vec:
-        s += str(element)
-    return s
-
-
-def get_vec_from_str(string_):
-    vec = []
-    for ch in string_:
-        vec.append(int(ch))
-    return vec
-
-
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def random_perm_matrix(n):
     return np.array([[1 if i == x else 0 for i in range(n)] for x in np.random.permutation(n)])
 
 
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def random_inv_matrix(n):
     candidate_ = None
     while 1:
@@ -36,7 +26,9 @@ def random_inv_matrix(n):
             break
     return candidate_
 
-
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def transform(matrix):
     res = []
     for i in range(len(matrix)):
@@ -46,11 +38,15 @@ def transform(matrix):
         res.append(vec)
     return res
 
-
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def get_random_msg(size):
     return [rand.randint(0, 1) for i in range(size)]
 
-
+@consumed_memory
+@resource_measurement_aspect
+@time_measurement_aspect
 def get_random_error(size, capacity):
     e = [0 for i in range(size)]
     i = 0
@@ -63,94 +59,91 @@ def get_random_error(size, capacity):
 
 
 class ReedSolomon(LinearCode):
-
-    def __int__(self, n, k):
-        self.n = n
-        self.k = k
-        self.reed_solomon = galois.ReedSolomon(n, k)
+    @consumed_memory
+    @resource_measurement_aspect
+    @time_measurement_aspect
+    def __init__(self, n=15, k=8):
+        super().__init__(n, k, galois.ReedSolomon(n, k))
+        self.fernet_key = fernet_key
+        self.fernet_cryptosys = Fernet(self.fernet_key)
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
-    @abstractmethod
-    def get_parity_check_matrix(self):
-        return self.reed_solomon.H
+    def encrypt_message(self, msg, public_key):
+        msg = [[int(d) for d in bin(ord(i))[2:]] for i in msg]
+        for idx, i in enumerate(msg):
+            if len(i) < self.k:
+                msg[idx] = [0] * (self.k - len(i)) + i
+        err = get_random_error(self.n, public_key['t'])
+
+        encrypted = []
+        for i in msg:
+            encrypted.append(i @ np.array(public_key['G_prime']) + err)
+
+        err_str = get_string_from_vec(err)
+        enc_err = self.fernet_cryptosys.encrypt(err_str.encode())
+        return ''.join([''.join([chr(c) for c in i]) for i in encrypted]), enc_err
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
-    @abstractmethod
-    def get_generator_matrix(self):
-        return self.reed_solomon.G
+    def decrypt_message(self, cipher, err, key):
+        dec_err = get_vec_from_str(self.fernet_cryptosys.decrypt(err).decode('utf-8'))
+        arr = []
+        start, end = 0, self.n
+        while end <= len(cipher):
+            arr.append(np.array([ord(c) for c in cipher[start:end]]) - dec_err)
+            start = end
+            end += self.n
+
+        mG_prime = []
+        for i in arr:
+            mG_prime.append(i)
+
+        m_dec = [m_ @ np.linalg.pinv(np.float_(np.array(key['G_prime']))) for m_ in mG_prime]
+        return ''.join([chr(int(''.join(str(c) for c in i), 2)) for i in [[round(x) for x in m_cc] for m_cc in m_dec]])
 
     @consumed_memory
     @resource_measurement_aspect
     @time_measurement_aspect
-    def error_correction(self, codeword):
-        return self.reed_solomon.detect(codeword)
+    def generate_keys(self):
+        t = self.code.t  # public
 
-    @consumed_memory
-    @resource_measurement_aspect
-    @time_measurement_aspect
-    def decode(self, codeword):
-        return self.reed_solomon.decode(codeword)
+        S = random_inv_matrix(self.k)  # priv
+        P = random_perm_matrix(self.n)  # priv
+
+        G_prime = S @ transform(self.code.G) @ P  # public
+        return {
+            'public_key': {'G_prime': G_prime.tolist(), 't': t},
+            'private_key': {'S': S.tolist(), 'P': P.tolist()}
+        }
 
 
 if __name__ == '__main__':
-    n = 15
-    k = 9
+    r = ReedSolomon()
+    msg_ = 'salut hei salut hei salut'
+    import json
+    keys = r.generate_keys()
+    exit(1)
+    keys_1 = r.generate_keys()
 
-    code = galois.ReedSolomon(n, k)
+    keys_2 = r.generate_keys()
 
-    S = random_inv_matrix(k)
-    P = random_perm_matrix(n)
+    cryp, err = r.encrypt_message(msg_, keys['public_key'])
 
-    H = np.array([np.array(el) for el in transform(code.H)])
-    G_ = S @ transform(code.G) @ P
-    m = get_random_msg(k)
-    e = get_random_error(n, code.t)
-    y = m @ G_ + e
+    cryp_1, err_1 = r.encrypt_message(msg_, keys_1['public_key'])
 
-    print(f'H={H}')
-    print(f'S={S}')
-    print(f'G={code.G}')
-    print(f'P={P}')
-    print(f'G\'={G_}')
-    print(f'm={m}')
-    print(f'y={y}')
-    print(f'e={e}')
+    cryp_2, err_2 = r.encrypt_message(msg_, keys_2['public_key'])
 
-    t = get_string_from_vec(e).count('1')
-    error_as_str = get_string_from_vec(e)
-    FernetKey = Fernet.generate_key()
-    FernetCryptoSystem = Fernet(FernetKey)
-    encrypted_error = FernetCryptoSystem.encrypt(error_as_str.encode())
-    print("encrypted_error=", str(encrypted_error))
-    print("decrypted_error=", FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
-    received_error = get_vec_from_str(FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
-    print(f'received_error={received_error}')
+    print(cryp)
+    print(cryp_1)
+    print(cryp_2)
 
-    mG_ = y - received_error
-    print(f'mG_={mG_}')
-    G_ = np.float_(G_)
-    m = mG_ @ np.linalg.pinv(G_)
-    m = [round(x) for x in m]
-    print(f'm\'={m}')
-    copy_msg = m
+    dec = r.decrypt_message(cryp, err, keys['public_key'])
+    dec_1 = r.decrypt_message(cryp_1, err_1, keys_1['public_key'])
+    dec_2 = r.decrypt_message(cryp_2, err_2, keys_2['public_key'])
 
-    good_errors = []
-    possible_errors = [np.array(list(i)) for i in list(itertools.product([0, 1], repeat=len(received_error)))]
-    for possible_error in possible_errors:
-        number_ones = get_string_from_vec(possible_error).count('1')
-        if number_ones == t:
-            good_errors.append(possible_error)
-
-    for error in good_errors:
-        mG_ = y - error
-        G_ = np.float_(G_)
-        m = mG_ @ np.linalg.pinv(G_)
-        m = [round(x) for x in m]
-        if np.array_equal(m, copy_msg):
-            print(f'error={error}')
-            print(f'm={m}')
-            print("Cryptosystem broken ! Message recovered")
+    print(dec)
+    print(dec_1)
+    print(dec_2)
