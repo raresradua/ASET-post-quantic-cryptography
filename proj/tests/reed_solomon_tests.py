@@ -1,61 +1,33 @@
 import sys
 import unittest
 
-import galois
-import numpy as np
-from cryptography.fernet import Fernet
+import coverage
 
-from proj.codes.reed_solomon import ReedSolomon, random_inv_matrix, random_perm_matrix, transform, get_random_msg, \
-    get_random_error, get_string_from_vec, get_vec_from_str
+from proj.codes.reed_solomon import ReedSolomon
 
 
 class ReedSolomonTest(unittest.TestCase):
-    def test_rs_code(self):
-        r = ReedSolomon(15, 9)
-        parity = r.get_parity_check_matrix()
-        self.assertIsNotNone(parity)
-
-    def test_G_rs_code(self):
-        r = ReedSolomon(15, 9)
-        generator = r.get_generator_matrix()
-        self.assertIsNotNone(generator)
+    def test_generated_keys(self):
+        code = ReedSolomon()
+        keys = code.generate_keys()
+        self.assertIsNotNone(keys['public_key'])
+        self.assertIsNotNone(keys['private_key'])
 
     def test_encryption_goppa_code(self):
-        code = galois.ReedSolomon(15, 9)
-
-        S = random_inv_matrix(9)
-        P = random_perm_matrix(15)
-
-        H = np.array([np.array(el) for el in transform(code.H)])
-        G_ = S @ transform(code.G) @ P
-        m = get_random_msg(9)
-        e = get_random_error(15, code.t)
-        y = m @ G_ + e
-        self.assertNotEquals(m, y)
+        code = ReedSolomon()
+        msg_ = 'alabalaportocala'
+        keys = code.generate_keys()
+        cryp, err = code.encrypt_message(msg_, keys['public_key'])
+        self.assertNotEqual(msg_, cryp)
 
     def test_decryption_goppa_code(self):
-        code = galois.ReedSolomon(15, 9)
+        r = ReedSolomon()
+        msg_ = 'alabalaportocala'
+        keys = r.generate_keys()
+        cryp, err = r.encrypt_message(msg_, keys['public_key'])
+        dec = r.decrypt_message(cryp, err, keys['public_key'])
 
-        S = random_inv_matrix(9)
-        P = random_perm_matrix(15)
-
-        H = np.array([np.array(el) for el in transform(code.H)])
-        G_ = S @ transform(code.G) @ P
-        m = get_random_msg(9)
-        e = get_random_error(15, code.t)
-        y = m @ G_ + e
-
-        t = get_string_from_vec(e).count('1')
-        error_as_str = get_string_from_vec(e)
-        FernetKey = Fernet.generate_key()
-        FernetCryptoSystem = Fernet(FernetKey)
-        encrypted_error = FernetCryptoSystem.encrypt(error_as_str.encode())
-        print("encrypted_error=", str(encrypted_error))
-        print("decrypted_error=", FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
-        received_error = get_vec_from_str(FernetCryptoSystem.decrypt(encrypted_error).decode("utf-8"))
-        print(f'received_error={received_error}')
-
-        self.assertEquals(error_as_str, received_error)
+        self.assertEqual(msg_, dec)
 
 
 s = unittest.TestLoader().loadTestsFromTestCase(ReedSolomonTest)
