@@ -15,6 +15,7 @@ def generate_errors(received_error, t):
 
 
 def attack_cipher(good_errors, n, ciph, crypto, pub):
+    good_results = 5
     rez = []
     for err in good_errors:
         try:
@@ -32,7 +33,8 @@ def attack_cipher(good_errors, n, ciph, crypto, pub):
             m_dec = [m_ @ np.linalg.pinv(np.float_(pub['G_prime'] if crypto == 'goppa' else np.array(pub['G_prime']))) for m_ in mG_prime]
             rez.append(
                 ''.join([chr(int(''.join(str(c) for c in i), 2)) for i in [[round(x) for x in m_cc] for m_cc in m_dec]]))
-            break
+            if len(rez) == good_results:
+                break
 
         except:
             continue
