@@ -1,5 +1,5 @@
 from .linear_code import LinearCode
-from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect, fernet_key, get_string_from_vec, get_vec_from_str
+from utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect, fernet_key, get_string_from_vec, get_vec_from_str
 import galois
 import numpy as np
 import random as rand

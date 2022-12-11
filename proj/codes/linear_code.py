@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
+from utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect
 
 
 class LinearCode(ABC):

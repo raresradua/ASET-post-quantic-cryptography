@@ -2,7 +2,7 @@ from .linear_code import LinearCode
 import galois
 from sympy import Matrix
 import random as rand
-from proj.utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect, fernet_key, get_string_from_vec, get_vec_from_str
+from utilities.utilities import consumed_memory, resource_measurement_aspect, time_measurement_aspect, fernet_key, get_string_from_vec, get_vec_from_str
 import logging
 import numpy as np
 from cryptography.fernet import Fernet

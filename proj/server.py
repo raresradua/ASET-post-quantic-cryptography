@@ -9,7 +9,7 @@ from passlib.hash import sha256_crypt
 from codes.goppa_code import GoppaCode
 from codes.reed_solomon import ReedSolomon
 from codes.attack import generate_errors, attack_cipher
-from proj.utilities.utilities import get_vec_from_str
+from utilities.utilities import get_vec_from_str
 
 
 app = FastAPI()

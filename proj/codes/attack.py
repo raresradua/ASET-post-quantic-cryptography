@@ -1,6 +1,6 @@
 import numpy as np
 import itertools
-from proj.utilities.utilities import get_string_from_vec
+from utilities.utilities import get_string_from_vec
 
 
 def generate_errors(received_error, t):
