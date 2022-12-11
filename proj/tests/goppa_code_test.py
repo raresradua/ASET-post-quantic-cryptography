@@ -20,7 +20,7 @@ class GoppaCodeTests(unittest.TestCase):
 
     def test_G_goppa_code(self):
         g = BinaryGoppaCode(13, 5, 12, 10)
-        generator = g.get_generator_matrix
+        generator = g.get_generator_matrix()
         self.assertIsNotNone(generator)
 
     def test_encryption_goppa_code(self):
