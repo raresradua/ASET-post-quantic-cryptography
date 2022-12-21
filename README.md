@@ -23,3 +23,6 @@
 
 ## Requirements Analysis
 * Requirements analysis [doc](https://docs.google.com/document/d/1tA3Sc1PtVLoBJNnYOFMvMrc3Ax3k-pKv7APM_Hti1FI/edit#heading=h.gowpr5lef2ag)
+
+## Technical Report
+* [Technical report](https://docs.google.com/document/d/1e60d1M0bCCKpmPbV-qHghhTpeqUhKm0JiHwRnPkiNaw/edit?usp=sharing) 
