@@ -317,10 +317,10 @@ async def statistics(request: Request):
     match req['when']:
         case 'today':
             return list(mongo.db_cursor['statistics'].find(
-                {'time': {'$gte': (datetime.datetime.utcnow() - datetime.timedelta(days=1))}}))
+                {'time': {'$gte': (datetime.datetime.utcnow() - datetime.timedelta(days=1))}}, {'_id': 0}))
         case 'last_7_days':
             return list(mongo.db_cursor['statistics'].find(
-                {'time': {'$gte': (datetime.datetime.utcnow() - datetime.timedelta(days=7))}}))
+                {'time': {'$gte': (datetime.datetime.utcnow() - datetime.timedelta(days=7))}}, {'_id': 0}))
         case 'last_30_days':
             return list(mongo.db_cursor['statistics'].find(
-                {'time': {'$gte': (datetime.datetime.utcnow() - datetime.timedelta(days=30))}}))
+                {'time': {'$gte': (datetime.datetime.utcnow() - datetime.timedelta(days=30))}}, {'_id': 0}))
