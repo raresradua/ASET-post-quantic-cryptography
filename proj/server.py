@@ -306,7 +306,7 @@ async def statistics(request: Request):
     if 'event' not in req.keys() and req['event'] not in ['attack', 'get_message', 'get_messages', 'profile', 'encrypt',
                                                           'decrypt', 'register', 'login', 'key_generation']:
         return {
-            'detail': 'event field must be present with the values in [attack, get_message, get_messages, profile, encrypt, decrypt, register, login, key_generation]'
+            'detail': 'event field must be present with the values in [attack, get_message, get_messages, profile_access, encrypt, decrypt, register, login, key_generation]'
         }
 
     if 'when' not in req.keys() and req['when'] not in ['today', 'last_7_days', 'last_30_days']:
